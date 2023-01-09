@@ -12,4 +12,4 @@ Currently it works with making requests to the OpenSearch service, but unfortuna
 
 # License
 
-MIT
+[MIT](./LICENSE)
