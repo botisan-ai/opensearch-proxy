@@ -8,13 +8,30 @@ const region = 'us-west-2';
 const service = 'es';
 
 const app = fastify({ logger: true });
+app.removeAllContentTypeParsers();
+app.addContentTypeParser('*', (req, payload, done) => {
+  let data = '';
+  payload.on('data', chunk => { data += chunk });
+  payload.on('end', () => {
+    done(null, data);
+  });
+});
+
 const provider = defaultProvider();
 
 app.all('/*', async (request, reply) => {
   const credentials = await provider();
   const path = request.url;
 
+  delete request.headers.host;
+  delete request.headers.referer;
+
   const opts = {
+    method: request.method,
+    body: request.method !== 'GET' ? request.body : undefined,
+    headers: {
+      ...request.headers,
+    },
     host,
     path,
     region,
@@ -23,15 +40,13 @@ app.all('/*', async (request, reply) => {
 
   aws4.sign(opts, credentials);
 
-  delete request.headers.host;
-  delete request.headers.referer;
-
   const res = await fetch(`https://${host}${path}`, {
     method: request.method,
     headers: {
       ...request.headers,
       ...opts.headers,
     },
+    body: request.method !== 'GET' ? request.body : undefined,
   });
 
   let body = '';
